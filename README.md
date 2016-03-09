@@ -1,2 +1,2 @@
 # MDanalysis
-Scripts to analyse molecular dynamics simulations
+Python scripts to analyse molecular dynamics simulations using MDtraj and jupyter notebook.
