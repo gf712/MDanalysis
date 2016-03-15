@@ -10,6 +10,7 @@ from scipy.stats import gaussian_kde
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
 from tqdm import tqdm
+from math import e
 
 def _atom_selection(topology, residue_selection, selection, verbose):
     """
@@ -141,7 +142,7 @@ def _load_traj_xyz(md_topology, trajectory, atom_subset, verbose, chunk, stride)
     
     return all_coordinates_np, sim_time
 
-def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, selection = True, chunk = 100, stride = 1, plot_KLD = True):
+def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, selection = True, chunk = 100, stride = 1, plot_KLD = True, KLD_base = e):
     """
     Function to perform PCA on 2 runs and 
     return KLD of distribution over time
@@ -235,7 +236,7 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
 
         kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
 
-        KLD_PCA.append(entropy(kde_n(x), kde_run1(x), base = 10.0))
+        KLD_PCA.append(entropy(kde_n(x), kde_run1(x), base = KLD_base))
             
         pbar.update(stride)
 
