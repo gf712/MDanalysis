@@ -168,12 +168,12 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         # timer for the PCA
         start_PCA_run1 = time.time()
     
-    pca1=PCA(n_components=1)
+    pca_run1=PCA(n_components=1)
     
     
     # calculate PCA and convert data to A
     
-    pca_run1_reduced_cartesian = pca1.fit_transform(all_coordinates_run1 * 10)
+    pca_run1_reduced_cartesian = pca_run1.fit_transform(all_coordinates_run1 * 10)
     
     # gaussian kde of PCA 
     
@@ -199,12 +199,12 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         # timer for the PCA
         start_PCA_run2 = time.time()
     
-    pca1=PCA(n_components=1)
+    pca_run2=PCA(n_components=1)
     
     
     # calculate PCA and convert data to A
     
-    pca_run2_reduced_cartesian = pca1.fit_transform(all_coordinates_run2 * 10)
+    pca_run2_reduced_cartesian = pca_run2.fit_transform(all_coordinates_run2 * 10)
     
     # gaussian kde of PCA for plot
     
@@ -219,20 +219,27 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         KLD_start = time.time()
     
     KLD_PCA = []
+
+    # define the range for KDE projection, added factor 1.5 to capture extremes of both distributions
     
-    x = range(min(np.append(pca_run1_reduced_cartesian, pca_run1_reduced_cartesian)),
-                   max(np.append(pca_run1_reduced_cartesian, pca_run1_reduced_cartesian)))
+    x = range(int(min(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5), 
+              int(max(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5))
     
+    #x_1 = range(min(pca_run1_reduced_cartesian), max(pca_run1_reduced_cartesian))
+    #x_2 = range(min(pca_run2_reduced_cartesian), max(pca_run2_reduced_cartesian))
+    
+
+    # loading bar to visualize progress and time estimation
     total = pca_run2_reduced_cartesian.shape[0] * stride
     pbar = tqdm(total=total, unit= 'Frame')
+
+    # loop to calculate KLD of every frame PCA distribution
     
     for frame in range(1, pca_run2_reduced_cartesian.shape[0] + 1):
 
-        time.sleep(0.01)
-
         #if verbose and frame * stride % 1000 == 0:
 
-        #   print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
+           #print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
 
         kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
 
@@ -243,6 +250,7 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
     if verbose:
         print '\nKLD calculation time: %.2f seconds \n' %(time.time() - KLD_start)
     
+    # KLD plot
     
     if plot_KLD:
         
@@ -251,6 +259,20 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         plt.xlabel('Frame number', size = 16)
         plt.ylabel('KLD', size = 16)
         plt.title('Kullback Leibler Divergence of PCA over time', size = 22)
+        plt.show()
+
+    # PCA distribution of both runs taking all frames
+    
+    plt.figure(figsize=(12,12))
+    plt.title('PC1 distribution in run 1 and run 2', size = 24)
+    plt.xlabel('PC 1', size = 16)
+    plt.ylabel('Density', size = 16)
+    plt.plot(x,kde_run1(x), label = 'run 1')
+    plt.plot(x, kde_run2(x), label = 'run 2')
+    plt.legend(loc = 'best', prop = {'size': 16})
+    plt.show()
+
+    # some stats of about files and execution time
     
     if verbose > 0:
         
@@ -260,5 +282,6 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         print 'Run 1 simulation time: %s ns \n' %(total_trajectory_time_1 / 1000)
         print 'Run 2 simulation time: %s ns \n' %(total_trajectory_time_2 / 1000)
         
+    return  pca_run1_reduced_cartesian, pca_run2_reduced_cartesian, x
         
 # Author: Gil Ferreira Hoben
