@@ -6,6 +6,7 @@ import time
 import sys
 import os
 import pandas as pd
+from tqdm import tqdm
 
 def _atom_selection(topology, residue_selection, selection, verbose):
     """
@@ -107,18 +108,23 @@ def _neighbouring_atoms(md_topology, trajectory, atom_subset, atom_number, verbo
     
     # now we need to load each trajectory file as a chunk
     try:
+
+        pbar = tqdm(total=len(trajectory_path), unit= 'File')
+        
         for file_i in trajectory_path:
-                for chunk_i in md.iterload(trajectory + file_i, chunk, top=md_topology, atom_indices = atom_subset):
+            for chunk_i in md.iterload(trajectory + file_i, chunk, top=md_topology, atom_indices = atom_subset):
 
-                    sim_time.append(chunk_i.time)
-                    number_of_frames += chunk_i.n_frames
+                sim_time.append(chunk_i.time)
+                number_of_frames += chunk_i.n_frames
 
-                    if verbose > 1:
-                        print 'Successfully loaded trajectory: \n %s' %(chunk_i)
+                if verbose > 1:
+                    print 'Successfully loaded trajectory: \n %s' %(chunk_i)
 
-                    neighbour_atoms.append(md.compute_neighbors(chunk_i, cutoff, np.array([atom_number])))
+                neighbour_atoms.append(md.compute_neighbors(chunk_i, cutoff, np.array([atom_number])))
                 
-                neighbour_atoms_np =np.concatenate(neighbour_atoms)
+            neighbour_atoms_np =np.concatenate(neighbour_atoms)
+            
+            pbar.update(1)
                     
     except:
         sys.exit('Make sure you provided a valid path to a folder with trajectory files!')
