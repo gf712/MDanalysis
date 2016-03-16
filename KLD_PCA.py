@@ -282,6 +282,6 @@ def main(topology, trajectory1, trajectory2, residue_selection, verbose = 1, sel
         print 'Run 1 simulation time: %s ns \n' %(total_trajectory_time_1 / 1000)
         print 'Run 2 simulation time: %s ns \n' %(total_trajectory_time_2 / 1000)
         
-    return  pca_run1_reduced_cartesian, pca_run2_reduced_cartesian, x
+    #return  pca_run1_reduced_cartesian, pca_run2_reduced_cartesian, x
         
 # Author: Gil Ferreira Hoben
