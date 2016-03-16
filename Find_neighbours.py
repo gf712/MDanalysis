@@ -139,7 +139,8 @@ def _neighbouring_atoms(md_topology, trajectory, atom_subset, atom_number, verbo
 
 def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unpythonize = True, verbose = 1, selection = True, chunk=100, threshold = 5):
     """
-    Find neighbouring atoms
+    Find neighbouring atoms and returns
+    plot and pandas DataFrame with Frequency count
     """
     
     # convert to nanometers (MDtraj unit) 
@@ -218,8 +219,6 @@ def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unp
         plt.title('Atoms within %s ${\AA}$ of %s' %(cutoff*10, final_resid_name[-1]), size = 24)
         plt.show()
 
-
-
     else:
             
         final_resid_name = []
@@ -240,3 +239,9 @@ def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unp
         print '\nFound the following atoms within the cutoff:'
         for residues in final_resid_name[:-1]:
             print residues
+    
+    neighbour_freq_df = pd.DataFrame({'Atom name':[], 'Frequency count (%)':[]})
+    neighbour_freq_df['Atom name'] = final_resid_name[:-1]
+    neighbour_freq_df['Frequency count (%)'] = neighbour_atoms_freq[1].values
+    
+    return neighbour_freq_df
