@@ -165,18 +165,18 @@ def _dist_atom_load(md_topology, trajectory, pair, verbose, chunk):
     sim_time = []
     
     try:
-    for file_i in trajectory_path:
-            for chunk_i in md.iterload(trajectory + file_i, chunk, top=md_topology):
-                        
-                sim_time.append(chunk_i.time)
+        for file_i in trajectory_path:
+                for chunk_i in md.iterload(trajectory + file_i, chunk, top=md_topology):
+                            
+                    sim_time.append(chunk_i.time)
 
-                if verbose > 1:
-                    print 'Successfully loaded trajectory: \n %s' %(chunk_i)
+                    if verbose > 1:
+                        print 'Successfully loaded trajectory: \n %s' %(chunk_i)
 
-                all_distances.append(md.compute_distances(chunk_i, pair))
-                        
-                        
-    all_distances_np = np.concatenate(all_distances) * 10
+                    all_distances.append(md.compute_distances(chunk_i, pair))
+                            
+                            
+        all_distances_np = np.concatenate(all_distances) * 10
     except:
         sys.exit('Make sure you provided a valid path to a folder with trajectory files!')
     else:
