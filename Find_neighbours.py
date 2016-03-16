@@ -131,7 +131,7 @@ def _neighbouring_atoms(md_topology, trajectory, atom_subset, atom_number, verbo
     
     return all_neighbour_atoms_np, sim_time
 
-def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unpythonize = True, verbose = 1, selection = True, chunk=100):
+def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unpythonize = True, verbose = 1, selection = True, chunk=100, threshold = 5):
     """
     Find neighbouring atoms
     """
@@ -148,11 +148,27 @@ def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unp
     
     # load trajectories and find neighbours
     neighbour_atoms, sim_time = _neighbouring_atoms(md_topology, trajectory, atom_subset, atom_number, verbose, unpythonize, chunk, cutoff)
+
+    
+   
+    
+    # histogram
+    # need to make a small detour because matplotlib
+    # histogram has problems counting frequency
+    # when using small bins
+    
+    y = np.bincount(neighbour_atoms)
+    dist = np.nonzero(y)[0]
+    zip(dist,y[dist])
+    neighbour_atoms_freq_count = pd.DataFrame(zip(dist,y[dist]))
+    neighbour_atoms_freq_count = neighbour_atoms_freq_count.astype(float)
+    neighbour_atoms_freq_count[1] = neighbour_atoms_freq_count[1].values/max(neighbour_atoms_freq_count[1].values)*100
+    neighbour_atoms_freq = neighbour_atoms_freq_count[neighbour_atoms_freq_count[1].values > threshold]
     
     if unpythonize:
         # rename residues (still testing)
         final_resid_name = []
-        for i in md_topology.subset(np.array(atom_number)).atoms:
+        for i in md_topology.subset(np.append(np.array(neighbour_atoms_freq[0].values), atom_number)).atoms:
             residues = str(i)
             # position to substitute
             pos = []
@@ -184,34 +200,37 @@ def main(topology, trajectory, atom_number, residue_selection, cutoff = 5.0, unp
             for j in pos:
                 residues[j] = str(num[z])
                 z+=1
-            final_resid_name.append("".join(residues))
+            final_resid_name.append("".join(residues)) 
+        
+        x = np.array([range(len(final_resid_name) - 1)])
 
-    
-    
-    
-    # histogram
-    # need to make a small detour because matplotlib
-    # histogram has problems counting frequency
-    # when using small bins
-    
-    y = np.bincount(neighbour_atoms)
-    dist = np.nonzero(y)[0]
-    zip(dist,y[dist])
-    neighbour_atoms_freq = pd.DataFrame(zip(dist,y[dist]))
-    neighbour_atoms_freq = neighbour_atoms_freq.astype(float)
-    
-    atom_number = np.array(atom_number)
-    
-    for residue in md_topology.subset(atom_number).residues:
-        residue_name = str(residue)
+        plt.figure(figsize=(15,15))
+        plt.xticks(x.T[:,0], final_resid_name[:-1], rotation= 60 )
+        plt.bar(x.T[:,0], neighbour_atoms_freq[1].values)
+        plt.xlabel('Residue name', size = 16)
+        plt.ylabel('Frequency (%)', size =16)
+        plt.title('Atoms within %s ${\AA}$ of %s' %(cutoff*10, final_resid_name[-1]), size = 24)
+        plt.show()
 
-    plt.figure(figsize=(12,12))
-    plt.bar(neighbour_atoms_freq[0].values, neighbour_atoms_freq[1].values/max(neighbour_atoms_freq[1].values)*100)
-    plt.xlabel('Atom number', size = 16)
-    plt.ylabel('Frequency (%)', size =16)
-    plt.title('Atoms within %s ${\AA}$ of %s' %(cutoff*10, final_resid_name[0]), size = 24)
-    plt.xlim([min(atom_subset), max(atom_subset)])
-    
-    print '\nFound the following residues within the cutoff:'
-    for residues in md_topology.subset(np.unique(neighbour_atoms)).residues:
-        print residues
+
+
+    else:
+            
+        final_resid_name = []
+        for i in md_topology.subset(np.append(np.array(neighbour_atoms_freq[0].values), atom_number)).atoms:
+            final_resid_name.append(i)
+            
+        x = np.array([range(len(final_resid_name) -1)])
+            
+        plt.figure(figsize=(15,15))
+        plt.xticks(x.T[:,0], final_resid_name[:-1], rotation= 60 )
+        plt.bar(x.T[:,0], neighbour_atoms_freq[1].values)
+        plt.xlabel('Residue name', size = 16)
+        plt.ylabel('Frequency (%)', size =16)
+        plt.title('Atoms within %s ${\AA}$ of %s' %(cutoff*10, final_resid_name[-1]), size = 24)
+        plt.show()
+            
+    if verbose > 0:
+        print '\nFound the following atoms within the cutoff:'
+        for residues in final_resid_name[:-1]:
+            print residues
