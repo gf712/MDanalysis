@@ -173,7 +173,54 @@ def multi_js(p, q, base):
                         - np.log(p.clip(1e-10,1)) / np.log(base))).sum(axis)
                       + (p * (np.log(p.clip(1e-10,1)) / np.log(base)
                               - np.log(q.clip(1e-10,1)) / np.log(base))).sum(axis))
+
+def _PCA(traj_xyz, components):
     
+    pca_xyz = PCA(n_components=components)
+    
+    reduced_cartesian = pca_xyz.fit_transform(traj_xyz)
+    
+    return reduced_cartesian
+    
+def _divergence(method, pca_run2_reduced_cartesian, stride, divergence_base, eval_1, x):
+    
+    div_PCA = []
+    
+    pbar = tqdm(total=pca_run2_reduced_cartesian.shape[0]*stride, unit= 'Frame')
+    
+    if method == 'Kullback-Leibler':
+
+        for frame in range(1, pca_run2_reduced_cartesian.shape[0] + 1):
+
+            #if verbose and frame * stride % 1000 == 0:
+
+                #print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
+
+            kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
+
+            div_PCA.append(multi_js(kde_n(x), eval_1, divergence_base))
+
+            pbar.update(stride)
+            
+    elif method == 'Jensen-Shannon':
+
+        for frame in range(1, pca_run2_reduced_cartesian.shape[0] + 1):
+
+            #if verbose and frame * stride % 1000 == 0:
+
+                #print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
+
+            kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
+
+            div_PCA.append(multi_js(kde_n(x), eval_1, divergence_base))
+
+            pbar.update(stride)
+            
+    else:
+        sys.exit('Choose a valid divergence method: \nJensen-Shannon \nKullback-Leibler')
+            
+    return div_PCA
+
 
 def main(topology, trajectory1, trajectory2, residue_selection = None, verbose = 1,  chunk = 100, stride = 1, plot_divergence = True, divergence_base = e, divergence_method = 'Kullback-Leibler'):
     """
@@ -253,19 +300,16 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
     if verbose > 0:
         # timer for the PCA
         start_PCA_run1 = time.time()
-    
-    pca_run1=PCA(n_components=1)
-    
-    
+        
     # calculate PCA and convert data to A
-    
-    pca_run1_reduced_cartesian = pca_run1.fit_transform(all_coordinates_run1 * 10)
+        
+    pca_run1_reduced_cartesian = _PCA(all_coordinates_run1 * 10, components=1)
     
     # gaussian kde of PCA 
     
     kde_run1 = gaussian_kde(pca_run1_reduced_cartesian[:,0])
     
-    if verbose:
+    if verbose > 0:
         print 'Run 1 PCA and KDE calculation time: %.2f seconds \n' %(time.time() - start_PCA_run1)
 
     # RUN 2
@@ -284,95 +328,37 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
     if verbose > 0:
         # timer for the PCA
         start_PCA_run2 = time.time()
-    
-    pca_run2=PCA(n_components=1)
 
     # calculate PCA and convert data to A
     
-    pca_run2_reduced_cartesian = pca_run2.fit_transform(all_coordinates_run2 * 10)
+    pca_run2_reduced_cartesian = _PCA(all_coordinates_run2 * 10, components=1)
     
     # gaussian kde of PCA for plot
     
     kde_run2 = gaussian_kde(pca_run2_reduced_cartesian[:,0])
     
-    if verbose:
+    if verbose > 0:
         print 'Run 2 PCA and KDE calculation time: %.2f seconds \n' %(time.time() - start_PCA_run2)
         
+    x = range(int(min(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5), 
+              int(max(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5))
     
+    if verbose > 0:
+        
+        div_start = time.time()
+        
+        print 'Starting %s divergence calculation' % divergence_method
+        
+    eval_1 = kde_run1(x)
     
-    if divergence_method == 'Jensen-Shannon':
-        
-        print 'Starting Jensen-Shannon divergence calculation \n'
-        
-        if verbose:
-            js_start = time.time()
-
-        div_PCA = []
-
-        x = range(int(min(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5), 
-                  int(max(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5))
-        
-        eval_1 = kde_run1(x)
-
-        #x_1 = range(min(pca_run1_reduced_cartesian), max(pca_run1_reduced_cartesian))
-        #x_2 = range(min(pca_run2_reduced_cartesian), max(pca_run2_reduced_cartesian))
-
-        total = pca_run2_reduced_cartesian.shape[0] * stride
-        pbar = tqdm(total=total, unit= 'Frame')
-
-
-        for frame in range(1, pca_run2_reduced_cartesian.shape[0] + 1):
-
-            #if verbose and frame * stride % 1000 == 0:
-
-                #print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
-
-            kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
-
-            div_PCA.append(multi_js(kde_n(x), eval_1, divergence_base))
-
-            pbar.update(stride)
-            
-        if verbose:
-            print '\nJensen-Shannon divergence calculation time: %.2f seconds \n' %(time.time() - js_start)
+    div_PCA = _divergence(divergence_method, pca_run2_reduced_cartesian, stride, divergence_base, eval_1, x)
     
-    elif divergence_method == 'Kullback-Leibler':
-        
-        print 'Starting Kullback-Leibler divergence calculation \n'
-        
-        if verbose:
-            kl_start = time.time()
 
-        div_PCA = []
-
-        x = range(int(min(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5), 
-                  int(max(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5))
-
-        #x_1 = range(min(pca_run1_reduced_cartesian), max(pca_run1_reduced_cartesian))
-        #x_2 = range(min(pca_run2_reduced_cartesian), max(pca_run2_reduced_cartesian))
-        
-        eval_1 = kde_run1(x)
-
-        total = pca_run2_reduced_cartesian.shape[0] * stride
-        pbar = tqdm(total=total, unit= 'Frame')
- 
-        for frame in range(1, pca_run2_reduced_cartesian.shape[0] + 1):
-
-            #if verbose and frame * stride % 1000 == 0:
-
-               #print 'Calculating KLD for frame %s/%s (KLD calculation time %.2f seconds)' %(frame * stride, pca_run2_reduced_cartesian.shape[0] * stride, time.time() - KLD_start)
-
-            kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
-
-            div_PCA.append(multi_kl(kde_n(x), eval_1, divergence_base))
-
-            pbar.update(stride)
+    if verbose > 0:
+        print '\n%s divergence calculation time: %.2f seconds \n' %(divergence_method, time.time() - div_start)
+    
             
-        if verbose:
-            print '\nKLD calculation time: %.2f seconds \n' %(time.time() - kl_start)
-            
-    else:
-        sys.exit('Choose a valid divergence method: \nJensen-Shannon \nKullback-Leibler')
+
     
     if plot_divergence:
         
