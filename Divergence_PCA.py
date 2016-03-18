@@ -198,7 +198,7 @@ def _divergence(method, pca_run2_reduced_cartesian, stride, divergence_base, eva
 
             kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
 
-            div_PCA.append(multi_js(kde_n(x), eval_1, divergence_base))
+            div_PCA.append(multi_kl(kde_n(x), eval_1, divergence_base))
 
             pbar.update(stride)
             
