@@ -286,8 +286,7 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
         start_PCA_run2 = time.time()
     
     pca_run2=PCA(n_components=1)
-    
-    
+
     # calculate PCA and convert data to A
     
     pca_run2_reduced_cartesian = pca_run2.fit_transform(all_coordinates_run2 * 10)
@@ -312,6 +311,8 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
 
         x = range(int(min(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5), 
                   int(max(np.append(pca_run1_reduced_cartesian, pca_run2_reduced_cartesian)) * 1.5))
+        
+        eval_1 = kde_run1(x)
 
         #x_1 = range(min(pca_run1_reduced_cartesian), max(pca_run1_reduced_cartesian))
         #x_2 = range(min(pca_run2_reduced_cartesian), max(pca_run2_reduced_cartesian))
@@ -328,7 +329,7 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
 
             kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
 
-            div_PCA.append(multi_js(kde_n(x), kde_run1(x), divergence_base))
+            div_PCA.append(multi_js(kde_n(x), eval_1, divergence_base))
 
             pbar.update(stride)
             
@@ -349,6 +350,8 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
 
         #x_1 = range(min(pca_run1_reduced_cartesian), max(pca_run1_reduced_cartesian))
         #x_2 = range(min(pca_run2_reduced_cartesian), max(pca_run2_reduced_cartesian))
+        
+        eval_1 = kde_run1(x)
 
         total = pca_run2_reduced_cartesian.shape[0] * stride
         pbar = tqdm(total=total, unit= 'Frame')
@@ -361,7 +364,7 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
 
             kde_n = gaussian_kde(pca_run2_reduced_cartesian[:frame + 1,0])
 
-            div_PCA.append(multi_kl(kde_n(x), kde_run1(x), divergence_base))
+            div_PCA.append(multi_kl(kde_n(x), eval_1, divergence_base))
 
             pbar.update(stride)
             
@@ -376,7 +379,7 @@ def main(topology, trajectory1, trajectory2, residue_selection = None, verbose =
         plt.figure(figsize=(12,12))
         plt.plot(range(1, len(div_PCA * stride) + 1, stride), div_PCA)
         plt.xlabel('Frame number', size = 16)
-        plt.ylabel('KLD', size = 16)
+        plt.ylabel('%s Divergence' % divergence_method, size = 16)
         plt.title('%s Divergence of PCA over time' % divergence_method, size = 22)
         plt.show() 
     
